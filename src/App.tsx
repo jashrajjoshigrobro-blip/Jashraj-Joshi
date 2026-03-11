@@ -12,6 +12,7 @@ import Ledger from './pages/Ledger';
 import ExpenseManagement from './pages/ExpenseManagement';
 import NoticeManagement from './pages/NoticeManagement';
 import ParkingManagement from './pages/ParkingManagement';
+import Reports from './pages/Reports';
 import MyProfile from './pages/MyProfile';
 import { FlatsProvider } from './context/FlatsContext';
 import { LedgerProvider } from './context/LedgerContext';
@@ -38,9 +39,9 @@ export default function App() {
                       <Route path="expenses" element={<ExpenseManagement />} />
                       <Route path="notices" element={<NoticeManagement />} />
                       <Route path="parking" element={<ParkingManagement />} />
+                      <Route path="reports" element={<Reports />} />
                       {/* Placeholders for other routes */}
                       <Route path="residents" element={<div className="p-6 text-gray-500">Residents Module (Coming Soon)</div>} />
-                      <Route path="reports" element={<div className="p-6 text-gray-500">Reports Module (Coming Soon)</div>} />
                       <Route path="settings" element={<MyProfile />} />
                     </Route>
                   </Routes>
