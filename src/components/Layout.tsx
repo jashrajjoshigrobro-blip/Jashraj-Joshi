@@ -16,7 +16,6 @@ export default function Layout() {
     { name: 'Ledger', icon: FileText, path: '/ledger' },
     { name: 'Notice Management', icon: Bell, path: '/notices' },
     { name: 'Parking Management', icon: Car, path: '/parking' },
-    { name: 'Residents', icon: Users, path: '/residents' },
     { name: 'Reports', icon: FileText, path: '/reports' },
     { name: 'Settings', icon: Settings, path: '/settings' },
   ];
@@ -35,13 +34,13 @@ export default function Layout() {
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           {isSidebarOpen && (
             <div className="flex items-center gap-2 overflow-hidden">
-              {societySettings.logoUrl ? (
+              {societySettings?.logoUrl ? (
                 <img src={societySettings.logoUrl} alt="Logo" className="w-8 h-8 rounded object-contain shrink-0" />
               ) : (
                 <Building2 size={24} className="text-indigo-600 shrink-0" />
               )}
-              <span className="font-bold text-sm text-gray-900 truncate" title={societySettings.name}>
-                {societySettings.name}
+              <span className="font-bold text-sm text-gray-900 truncate" title={societySettings?.name}>
+                {societySettings?.name || 'Loading...'}
               </span>
             </div>
           )}
@@ -82,7 +81,7 @@ export default function Layout() {
           <h1 className="text-xl font-semibold text-gray-800">{currentRouteName}</h1>
           <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">{adminProfile.fullName}</p>
+              <p className="text-sm font-medium text-gray-900">{adminProfile?.fullName || 'Loading...'}</p>
               <p className="text-xs text-gray-500">Administrator</p>
             </div>
             <div className="h-9 w-9 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center">

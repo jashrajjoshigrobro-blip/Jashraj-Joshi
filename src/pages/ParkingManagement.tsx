@@ -2,13 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { useParking } from '../context/ParkingContext';
 import { useFlats } from '../context/FlatsContext';
 import { ParkingSlot, ParkingSlotType, ParkingAllocationStatus } from '../types';
-import { Plus, Search, Edit3, Trash2, Link, Unlink, Car } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Link, Unlink, Car, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { format, parseISO } from 'date-fns';
 import Modal from '../components/Modal';
 
 export default function ParkingManagement() {
-  const { parkingSlots, addParkingSlot, updateParkingSlot, assignSlotToFlat, reassignSlot, removeAllocation } = useParking();
+  const { parkingSlots, isLoading, addParkingSlot, updateParkingSlot, assignSlotToFlat, reassignSlot, removeAllocation } = useParking();
   const { flats } = useFlats();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,9 +56,9 @@ export default function ParkingManagement() {
     setIsReassignModalOpen(true);
   };
 
-  const handleRemoveAllocation = (slotId: string) => {
+  const handleRemoveAllocation = async (slotId: string) => {
     if (window.confirm('Are you sure you want to remove the allocation for this slot?')) {
-      removeAllocation(slotId);
+      await removeAllocation(slotId);
     }
   };
 
@@ -108,7 +108,15 @@ export default function ParkingManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredSlots.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredSlots.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     No parking slots found.
@@ -202,8 +210,8 @@ export default function ParkingManagement() {
       {isAddModalOpen && (
         <AddEditSlotModal
           onClose={() => setIsAddModalOpen(false)}
-          onSave={(data) => {
-            addParkingSlot(data);
+          onSave={async (data) => {
+            await addParkingSlot(data);
             setIsAddModalOpen(false);
           }}
         />
@@ -216,8 +224,8 @@ export default function ParkingManagement() {
             setIsEditModalOpen(false);
             setSelectedSlot(null);
           }}
-          onSave={(data) => {
-            updateParkingSlot(selectedSlot.id, data);
+          onSave={async (data) => {
+            await updateParkingSlot(selectedSlot.id, data);
             setIsEditModalOpen(false);
             setSelectedSlot(null);
           }}
@@ -233,8 +241,8 @@ export default function ParkingManagement() {
             setIsAssignModalOpen(false);
             setSelectedSlot(null);
           }}
-          onSave={(flatId) => {
-            assignSlotToFlat(selectedSlot.id, flatId);
+          onSave={async (flatId) => {
+            await assignSlotToFlat(selectedSlot.id, flatId);
             setIsAssignModalOpen(false);
             setSelectedSlot(null);
           }}
@@ -250,8 +258,8 @@ export default function ParkingManagement() {
             setIsReassignModalOpen(false);
             setSelectedSlot(null);
           }}
-          onSave={(flatId) => {
-            reassignSlot(selectedSlot.id, flatId);
+          onSave={async (flatId) => {
+            await reassignSlot(selectedSlot.id, flatId);
             setIsReassignModalOpen(false);
             setSelectedSlot(null);
           }}

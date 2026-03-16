@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, TrendingDown, AlertTriangle, Calendar, Users, IndianRupee, ArrowLeft } from 'lucide-react';
+import { FileText, TrendingDown, AlertTriangle, Calendar, Users, IndianRupee, ArrowLeft, Loader2 } from 'lucide-react';
+import { useFlats } from '../../context/FlatsContext';
+import { useLedger } from '../../context/LedgerContext';
+import { useExpense } from '../../context/ExpenseContext';
 
 import MonthlyPnL from './MonthlyPnL';
 import ExpenseAnalysis from './ExpenseAnalysis';
@@ -12,6 +15,11 @@ type ReportType = 'pnl' | 'expense' | 'defaulter' | 'annual' | 'payments' | 'inc
 
 export default function Reports() {
   const [activeReport, setActiveReport] = useState<ReportType>(null);
+  const { isLoading: isFlatsLoading } = useFlats();
+  const { isLoading: isLedgerLoading } = useLedger();
+  const { isLoading: isExpenseLoading } = useExpense();
+
+  const isLoading = isFlatsLoading || isLedgerLoading || isExpenseLoading;
 
   const reports = [
     {
@@ -75,6 +83,14 @@ export default function Reports() {
       default: return null;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   if (activeReport) {
     const reportDetails = reports.find(r => r.id === activeReport);

@@ -35,61 +35,70 @@ export default function EditFlatModal({ isOpen, onClose, flat }: EditFlatModalPr
     }
   }, [isOpen, flat]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const updates: Partial<Flat> = {
-      block: formData.block,
-      floor: formData.floor,
-      area: Number(formData.area) || 0,
-      occupancyStatus: formData.occupancyStatus,
-    };
-
-    if (formData.occupancyStatus === 'Tenant Occupied') {
-      updates.tenant = {
-        name: formData.tenantName,
-        phone: formData.tenantPhone,
-        moveInDate: formData.tenantMoveIn,
+    try {
+      const updates: Partial<Flat> = {
+        block: formData.block,
+        floor: formData.floor,
+        area: Number(formData.area) || 0,
+        occupancyStatus: formData.occupancyStatus,
       };
-    } else {
-      updates.tenant = undefined;
-    }
 
-    // Handle occupancy history logic
-    if (formData.occupancyStatus !== flat.occupancyStatus) {
-      const now = new Date().toISOString();
-      const newHistory = [...flat.occupancyHistory];
-      
-      // Close current occupant
-      const currentOccupantIndex = newHistory.findIndex(h => !h.endDate);
-      if (currentOccupantIndex !== -1) {
-        newHistory[currentOccupantIndex] = {
-          ...newHistory[currentOccupantIndex],
-          endDate: now
-        };
-      }
-
-      // Add new occupant if not vacant
-      if (formData.occupancyStatus === 'Owner Occupied') {
-        newHistory.push({
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'Owner',
-          name: flat.ownerName,
-          startDate: now,
-        });
-      } else if (formData.occupancyStatus === 'Tenant Occupied') {
-        newHistory.push({
-          id: Math.random().toString(36).substr(2, 9),
-          type: 'Tenant',
+      if (formData.occupancyStatus === 'Tenant Occupied') {
+        updates.tenant = {
           name: formData.tenantName,
-          startDate: formData.tenantMoveIn,
-        });
+          phone: formData.tenantPhone,
+          moveInDate: formData.tenantMoveIn,
+        };
+      } else {
+        updates.tenant = undefined;
       }
-      updates.occupancyHistory = newHistory;
-    }
 
-    updateFlat(flat.id, updates);
-    onClose();
+      // Handle occupancy history logic
+      if (formData.occupancyStatus !== flat.occupancyStatus) {
+        const now = new Date().toISOString();
+        const newHistory = [...flat.occupancyHistory];
+        
+        // Close current occupant
+        const currentOccupantIndex = newHistory.findIndex(h => !h.endDate);
+        if (currentOccupantIndex !== -1) {
+          newHistory[currentOccupantIndex] = {
+            ...newHistory[currentOccupantIndex],
+            endDate: now
+          };
+        }
+
+        // Add new occupant if not vacant
+        if (formData.occupancyStatus === 'Owner Occupied') {
+          newHistory.push({
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'Owner',
+            name: flat.ownerName,
+            startDate: now,
+          });
+        } else if (formData.occupancyStatus === 'Tenant Occupied') {
+          newHistory.push({
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'Tenant',
+            name: formData.tenantName,
+            startDate: formData.tenantMoveIn,
+          });
+        }
+        updates.occupancyHistory = newHistory;
+      }
+
+      await updateFlat(flat.id, updates);
+      onClose();
+    } catch (error) {
+      console.error('Error updating flat:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -140,8 +149,10 @@ export default function EditFlatModal({ isOpen, onClose, flat }: EditFlatModalPr
         )}
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancel</button>
-          <button type="submit" className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors">Save Changes</button>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50">
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </form>
     </Modal>

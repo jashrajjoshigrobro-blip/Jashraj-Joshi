@@ -14,12 +14,21 @@ export default function AssignParkingModal({ isOpen, onClose, flatId }: AssignPa
 
   const availableSlots = parkingSlots.filter(s => s.status === 'Available');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedSlotId) {
-      assignSlotToFlat(selectedSlotId, flatId);
-      onClose();
-      setSelectedSlotId('');
+      setIsSubmitting(true);
+      try {
+        await assignSlotToFlat(selectedSlotId, flatId);
+        onClose();
+        setSelectedSlotId('');
+      } catch (error) {
+        console.error('Error assigning parking slot:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -47,8 +56,10 @@ export default function AssignParkingModal({ isOpen, onClose, flatId }: AssignPa
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancel</button>
-          <button type="submit" disabled={!selectedSlotId} className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50">Assign Slot</button>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={!selectedSlotId || isSubmitting} className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50">
+            {isSubmitting ? 'Assigning...' : 'Assign Slot'}
+          </button>
         </div>
       </form>
     </Modal>

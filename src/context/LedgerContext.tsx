@@ -6,14 +6,17 @@ import { useExpense } from './ExpenseContext';
 interface LedgerContextType {
   transactions: LedgerTransaction[];
   addTransaction: (transaction: Omit<LedgerTransaction, 'id'>) => void;
+  isLoading: boolean;
 }
 
 const LedgerContext = createContext<LedgerContextType | undefined>(undefined);
 
 export function LedgerProvider({ children }: { children: ReactNode }) {
-  const { flats } = useFlats();
-  const { entries } = useExpense();
+  const { flats, isLoading: isFlatsLoading } = useFlats();
+  const { entries, isLoading: isExpenseLoading } = useExpense();
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
+
+  const isLoading = isFlatsLoading || isExpenseLoading;
 
   // Automatically sync payments from flats as income transactions
   useEffect(() => {
@@ -47,36 +50,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
         amount: e.amount,
       }));
 
-    // Add some mock expenses for demonstration
-    const mockExpenses: LedgerTransaction[] = [
-      {
-        id: 'exp-mock-1',
-        date: '2023-10-02T10:00:00Z',
-        type: 'Expense',
-        category: 'Electricity',
-        description: 'Common Area Electricity Bill - Sep',
-        amount: 12000,
-      },
-      {
-        id: 'exp-mock-2',
-        date: '2023-10-05T14:30:00Z',
-        type: 'Expense',
-        category: 'Repairs',
-        description: 'Lift Repair Work',
-        amount: 8500,
-      },
-      {
-        id: 'exp-mock-3',
-        date: '2023-10-10T09:00:00Z',
-        type: 'Expense',
-        category: 'Salary',
-        description: 'Security Staff Salary - Sep',
-        amount: 45000,
-      }
-    ];
-
     // Combine and sort by date ascending
-    const allTransactions = [...paymentTransactions, ...expenseTransactions, ...mockExpenses].sort(
+    const allTransactions = [...paymentTransactions, ...expenseTransactions].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -95,7 +70,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LedgerContext.Provider value={{ transactions, addTransaction }}>
+    <LedgerContext.Provider value={{ transactions, addTransaction, isLoading }}>
       {children}
     </LedgerContext.Provider>
   );

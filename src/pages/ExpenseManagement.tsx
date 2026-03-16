@@ -3,12 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { useExpense } from '../context/ExpenseContext';
 import { useFlats } from '../context/FlatsContext';
 import { ExpenseEntry, ExpenseEntryCategory } from '../types';
-import { Plus, Search, Calendar, Filter, X, Check } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, X, Check, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { format, parseISO } from 'date-fns';
 
 export default function ExpenseManagement() {
-  const { entries, residentChargeTypes, societyExpenseTypes, addEntry, addExpenseType } = useExpense();
+  const { entries, isLoading, residentChargeTypes, societyExpenseTypes, addEntry, addExpenseType } = useExpense();
   const { flats } = useFlats();
   const location = useLocation();
 
@@ -130,6 +130,14 @@ export default function ExpenseManagement() {
     }
     return '—';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-24">
@@ -320,6 +328,7 @@ function AddEntryModal({ onClose, flats, residentChargeTypes, societyExpenseType
   const [type, setType] = useState('');
   const [isCreatingNewType, setIsCreatingNewType] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
@@ -348,8 +357,9 @@ function AddEntryModal({ onClose, flats, residentChargeTypes, societyExpenseType
     }
   };
 
-  const handleSave = () => {
-    onAddEntry({
+  const handleSave = async () => {
+    setIsSubmitting(true);
+    await onAddEntry({
       date: new Date(date).toISOString(),
       expenseCategory: category as ExpenseEntryCategory,
       expenseType: type,
@@ -357,6 +367,7 @@ function AddEntryModal({ onClose, flats, residentChargeTypes, societyExpenseType
       amount: parseFloat(amount),
       linkedScope: category === 'Society Operational Expense' ? 'Society Level' : (linkOption === 'All' ? 'All Flats' : selectedFlats),
     });
+    setIsSubmitting(false);
     onClose();
   };
 
@@ -609,10 +620,12 @@ function AddEntryModal({ onClose, flats, residentChargeTypes, societyExpenseType
               (step === 2 && !type && !isCreatingNewType) ||
               (step === 2 && isCreatingNewType && !newTypeName) ||
               (step === 3 && (!date || !description || !amount)) ||
-              (step === 4 && linkOption === 'Specific' && selectedFlats.length === 0)
+              (step === 4 && linkOption === 'Specific' && selectedFlats.length === 0) ||
+              isSubmitting
             }
-            className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
             {step === (category === 'Society Operational Expense' ? 3 : 4) ? 'Save Entry' : 'Next'}
           </button>
         </div>

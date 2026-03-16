@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProfile, AdminProfile, SocietySettings } from '../context/ProfileContext';
 import { useFlats } from '../context/FlatsContext';
-import { Save, Building2, User, Key, Upload, CheckCircle2 } from 'lucide-react';
+import { Save, Building2, User, Key, Upload, CheckCircle2, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function MyProfile() {
-  const { adminProfile, updateAdminProfile, societySettings, updateSocietySettings } = useProfile();
+  const { adminProfile, updateAdminProfile, societySettings, updateSocietySettings, isLoading } = useProfile();
   const { flats } = useFlats();
   const [activeTab, setActiveTab] = useState<'profile' | 'society'>('profile');
 
@@ -20,15 +20,26 @@ export default function MyProfile() {
   // Society Settings State
   const [societyForm, setSocietyForm] = useState<SocietySettings>(societySettings);
 
+  useEffect(() => {
+    setProfileForm(adminProfile);
+  }, [adminProfile]);
+
+  useEffect(() => {
+    setSocietyForm(societySettings);
+  }, [societySettings]);
+
   // UI State
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [societySuccess, setSocietySuccess] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateAdminProfile(profileForm);
+    setIsSubmitting(true);
+    await updateAdminProfile(profileForm);
+    setIsSubmitting(false);
     setProfileSuccess(true);
     setTimeout(() => setProfileSuccess(false), 3000);
   };
@@ -54,9 +65,11 @@ export default function MyProfile() {
     setTimeout(() => setPasswordSuccess(false), 3000);
   };
 
-  const handleSocietySubmit = (e: React.FormEvent) => {
+  const handleSocietySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateSocietySettings(societyForm);
+    setIsSubmitting(true);
+    await updateSocietySettings(societyForm);
+    setIsSubmitting(false);
     setSocietySuccess(true);
     setTimeout(() => setSocietySuccess(false), 3000);
   };
@@ -71,6 +84,14 @@ export default function MyProfile() {
       reader.readAsDataURL(file);
     }
   };
+
+  if (isLoading || !profileForm || !societyForm) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -159,9 +180,10 @@ export default function MyProfile() {
                 )}
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  <Save size={18} /> Save Changes
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Changes
                 </button>
               </div>
             </form>
@@ -358,9 +380,10 @@ export default function MyProfile() {
                 )}
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  <Save size={18} /> Update Society Details
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Update Society Details
                 </button>
               </div>
             </form>

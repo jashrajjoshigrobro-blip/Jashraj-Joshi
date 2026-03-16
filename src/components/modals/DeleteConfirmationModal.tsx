@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from '../Modal';
 import { useFlats } from '../../context/FlatsContext';
 import { Flat } from '../../types';
@@ -8,11 +8,23 @@ interface DeleteConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   flat: Flat;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
 }
 
 export default function DeleteConfirmationModal({ isOpen, onClose, flat, onConfirm }: DeleteConfirmationModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasFinancialRecords = flat.payments.length > 0 || flat.pendingDues.length > 0;
+
+  const handleConfirm = async () => {
+    setIsSubmitting(true);
+    try {
+      await onConfirm();
+    } catch (error) {
+      console.error('Error deleting flat:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Delete Flat">
@@ -40,12 +52,12 @@ export default function DeleteConfirmationModal({ isOpen, onClose, flat, onConfi
         )}
 
         <div className="flex justify-end gap-3 pt-4">
-          <button onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">
+          <button onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50">
             {hasFinancialRecords ? 'Close' : 'Cancel'}
           </button>
           {!hasFinancialRecords && (
-            <button onClick={onConfirm} className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors">
-              Delete Flat
+            <button onClick={handleConfirm} disabled={isSubmitting} className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors disabled:opacity-50">
+              {isSubmitting ? 'Deleting...' : 'Delete Flat'}
             </button>
           )}
         </div>

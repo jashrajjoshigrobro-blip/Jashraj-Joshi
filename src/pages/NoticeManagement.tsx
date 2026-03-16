@@ -3,11 +3,11 @@ import { useNotices } from '../context/NoticeContext';
 import { useProfile } from '../context/ProfileContext';
 import { Notice, NoticeStatus } from '../types';
 import { format, parseISO } from 'date-fns';
-import { Plus, Search, Edit3, Trash2, Eye, Send, X } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Eye, Send, X, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function NoticeManagement() {
-  const { notices, addNotice, updateNotice, deleteNotice, publishNotice } = useNotices();
+  const { notices, isLoading, addNotice, updateNotice, deleteNotice, publishNotice } = useNotices();
   const { societySettings } = useProfile();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -21,18 +21,18 @@ export default function NoticeManagement() {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [notices, searchQuery]);
 
-  const handlePublish = (id: string, title: string, description: string) => {
+  const handlePublish = async (id: string, title: string, description: string) => {
     if (window.confirm('Are you sure you want to publish this notice? It cannot be edited once published.')) {
-      publishNotice(id);
+      await publishNotice(id);
       // Simulate WhatsApp message
       console.log(`📢 New Notice from ${societySettings.name}\nTitle: ${title}\nDetails:\n${description}`);
       alert('Notice published successfully! WhatsApp message sent to residents.');
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this draft?')) {
-      deleteNotice(id);
+      await deleteNotice(id);
     }
   };
 
@@ -92,7 +92,15 @@ export default function NoticeManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sortedNotices.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                    </div>
+                  </td>
+                </tr>
+              ) : sortedNotices.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     No notices found.
@@ -168,16 +176,16 @@ export default function NoticeManagement() {
             setIsCreateModalOpen(false);
             setSelectedNotice(null);
           }}
-          onSave={(title, description, status) => {
+          onSave={async (title, description, status) => {
             if (selectedNotice) {
-              updateNotice(selectedNotice.id, { title, description });
+              await updateNotice(selectedNotice.id, { title, description });
               if (status === 'Published') {
-                publishNotice(selectedNotice.id);
+                await publishNotice(selectedNotice.id);
                 console.log(`📢 New Notice from ${societySettings.name}\nTitle: ${title}\nDetails:\n${description}`);
                 alert('Notice published successfully! WhatsApp message sent to residents.');
               }
             } else {
-              addNotice({ title, description, status });
+              await addNotice({ title, description, status });
               if (status === 'Published') {
                 console.log(`📢 New Notice from ${societySettings.name}\nTitle: ${title}\nDetails:\n${description}`);
                 alert('Notice published successfully! WhatsApp message sent to residents.');

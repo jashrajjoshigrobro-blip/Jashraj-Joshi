@@ -17,13 +17,22 @@ export default function GenerateReceiptModal({ isOpen, onClose, flatId, due }: G
     referenceId: '',
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!due) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    generateReceipt(flatId, due.id, formData.mode, formData.referenceId);
-    onClose();
-    setFormData({ mode: 'UPI', referenceId: '' });
+    setIsSubmitting(true);
+    try {
+      await generateReceipt(flatId, due.id, formData.mode, formData.referenceId);
+      onClose();
+      setFormData({ mode: 'UPI', referenceId: '' });
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -61,8 +70,10 @@ export default function GenerateReceiptModal({ isOpen, onClose, flatId, due }: G
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancel</button>
-          <button type="submit" className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors">Confirm Payment</button>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50">
+            {isSubmitting ? 'Confirming...' : 'Confirm Payment'}
+          </button>
         </div>
       </form>
     </Modal>

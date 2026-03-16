@@ -40,8 +40,6 @@ export default function App() {
                       <Route path="notices" element={<NoticeManagement />} />
                       <Route path="parking" element={<ParkingManagement />} />
                       <Route path="reports" element={<Reports />} />
-                      {/* Placeholders for other routes */}
-                      <Route path="residents" element={<div className="p-6 text-gray-500">Residents Module (Coming Soon)</div>} />
                       <Route path="settings" element={<MyProfile />} />
                     </Route>
                   </Routes>

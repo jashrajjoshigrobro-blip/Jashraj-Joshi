@@ -17,10 +17,19 @@ export default function TransferOwnershipModal({ isOpen, onClose, flat }: Transf
     newOwnerEmail: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    transferOwnership(flat.id, formData.newOwnerName, formData.newOwnerPhone, formData.newOwnerEmail);
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await transferOwnership(flat.id, formData.newOwnerName, formData.newOwnerPhone, formData.newOwnerEmail);
+      onClose();
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -49,8 +58,10 @@ export default function TransferOwnershipModal({ isOpen, onClose, flat }: Transf
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancel</button>
-          <button type="submit" className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors">Confirm Transfer</button>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50">
+            {isSubmitting ? 'Transferring...' : 'Confirm Transfer'}
+          </button>
         </div>
       </form>
     </Modal>

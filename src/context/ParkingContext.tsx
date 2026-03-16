@@ -1,83 +1,164 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { ParkingSlot, ParkingSlotType, ParkingAllocationStatus } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface ParkingContextType {
   parkingSlots: ParkingSlot[];
-  addParkingSlot: (slot: Omit<ParkingSlot, 'id' | 'status' | 'allocatedToFlatId' | 'assignedDate'>) => void;
-  updateParkingSlot: (id: string, updates: Partial<ParkingSlot>) => void;
-  assignSlotToFlat: (slotId: string, flatId: string) => void;
-  reassignSlot: (slotId: string, newFlatId: string) => void;
-  removeAllocation: (slotId: string) => void;
+  isLoading: boolean;
+  addParkingSlot: (slot: Omit<ParkingSlot, 'id' | 'status' | 'allocatedToFlatId' | 'assignedDate'>) => Promise<void>;
+  updateParkingSlot: (id: string, updates: Partial<ParkingSlot>) => Promise<void>;
+  assignSlotToFlat: (slotId: string, flatId: string) => Promise<void>;
+  reassignSlot: (slotId: string, newFlatId: string) => Promise<void>;
+  removeAllocation: (slotId: string) => Promise<void>;
 }
 
 const ParkingContext = createContext<ParkingContextType | undefined>(undefined);
 
 export function ParkingProvider({ children }: { children: ReactNode }) {
-  const [parkingSlots, setParkingSlots] = useState<ParkingSlot[]>([
-    { id: 'p1', zone: 'Basement 1', level: '-1', slotNumber: 'A12', slotType: 'Car', status: 'Allocated', allocatedToFlatId: '1', assignedDate: '2022-01-15' },
-    { id: 'p2', zone: 'Basement 1', level: '-1', slotNumber: 'A13', slotType: 'Bike', status: 'Allocated', allocatedToFlatId: '1', assignedDate: '2022-01-15' },
-    { id: 'p3', zone: 'Ground', level: '0', slotNumber: 'B45', slotType: 'Car', status: 'Allocated', allocatedToFlatId: '2', assignedDate: '2023-05-01' },
-    { id: 'p4', zone: 'Ground', level: '0', slotNumber: 'B46', slotType: 'EV', status: 'Available' },
-    { id: 'p5', zone: 'Basement 2', level: '-2', slotNumber: 'C10', slotType: 'Visitor', status: 'Available' },
-  ]);
+  const [parkingSlots, setParkingSlots] = useState<ParkingSlot[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addParkingSlot = (slotData: Omit<ParkingSlot, 'id' | 'status' | 'allocatedToFlatId' | 'assignedDate'>) => {
-    const newSlot: ParkingSlot = {
-      ...slotData,
-      id: `p${Date.now()}`,
-      status: 'Available',
-    };
-    setParkingSlots(prev => [...prev, newSlot]);
-  };
+  useEffect(() => {
+    fetchParkingSlots();
+  }, []);
 
-  const updateParkingSlot = (id: string, updates: Partial<ParkingSlot>) => {
-    setParkingSlots(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-  };
+  const fetchParkingSlots = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('parking_slots')
+        .select('*')
+        .order('zone', { ascending: true })
+        .order('slot_number', { ascending: true });
 
-  const assignSlotToFlat = (slotId: string, flatId: string) => {
-    setParkingSlots(prev => prev.map(s => {
-      if (s.id === slotId) {
-        return {
-          ...s,
-          status: 'Allocated',
-          allocatedToFlatId: flatId,
-          assignedDate: new Date().toISOString(),
-        };
+      if (error) throw error;
+
+      if (data) {
+        const formattedSlots: ParkingSlot[] = data.map((slot: any) => ({
+          id: slot.id,
+          zone: slot.zone,
+          level: slot.level,
+          slotNumber: slot.slot_number,
+          slotType: slot.slot_type as ParkingSlotType,
+          status: slot.status as ParkingAllocationStatus,
+          allocatedToFlatId: slot.allocated_to_flat_id,
+          assignedDate: slot.assigned_date,
+        }));
+        setParkingSlots(formattedSlots);
       }
-      return s;
-    }));
+    } catch (error) {
+      console.error('Error fetching parking slots:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const reassignSlot = (slotId: string, newFlatId: string) => {
-    setParkingSlots(prev => prev.map(s => {
-      if (s.id === slotId) {
-        return {
-          ...s,
+  const addParkingSlot = async (newSlotData: Omit<ParkingSlot, 'id' | 'status' | 'allocatedToFlatId' | 'assignedDate'>) => {
+    try {
+      const { error } = await supabase
+        .from('parking_slots')
+        .insert([{
+          zone: newSlotData.zone,
+          level: newSlotData.level,
+          slot_number: newSlotData.slotNumber,
+          slot_type: newSlotData.slotType,
+          status: 'Available'
+        }]);
+
+      if (error) throw error;
+      await fetchParkingSlots();
+    } catch (error) {
+      console.error('Error adding parking slot:', error);
+    }
+  };
+
+  const updateParkingSlot = async (id: string, updates: Partial<ParkingSlot>) => {
+    try {
+      const dbUpdates: any = {};
+      if (updates.zone !== undefined) dbUpdates.zone = updates.zone;
+      if (updates.level !== undefined) dbUpdates.level = updates.level;
+      if (updates.slotNumber !== undefined) dbUpdates.slot_number = updates.slotNumber;
+      if (updates.slotType !== undefined) dbUpdates.slot_type = updates.slotType;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.allocatedToFlatId !== undefined) dbUpdates.allocated_to_flat_id = updates.allocatedToFlatId;
+      if (updates.assignedDate !== undefined) dbUpdates.assigned_date = updates.assignedDate;
+
+      const { error } = await supabase
+        .from('parking_slots')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchParkingSlots();
+    } catch (error) {
+      console.error('Error updating parking slot:', error);
+    }
+  };
+
+  const assignSlotToFlat = async (slotId: string, flatId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parking_slots')
+        .update({
           status: 'Allocated',
-          allocatedToFlatId: newFlatId,
-          assignedDate: new Date().toISOString(),
-        };
-      }
-      return s;
-    }));
+          allocated_to_flat_id: flatId,
+          assigned_date: new Date().toISOString()
+        })
+        .eq('id', slotId);
+
+      if (error) throw error;
+      await fetchParkingSlots();
+    } catch (error) {
+      console.error('Error assigning parking slot:', error);
+    }
   };
 
-  const removeAllocation = (slotId: string) => {
-    setParkingSlots(prev => prev.map(s => {
-      if (s.id === slotId) {
-        return {
-          ...s,
+  const reassignSlot = async (slotId: string, newFlatId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parking_slots')
+        .update({
+          status: 'Allocated',
+          allocated_to_flat_id: newFlatId,
+          assigned_date: new Date().toISOString()
+        })
+        .eq('id', slotId);
+
+      if (error) throw error;
+      await fetchParkingSlots();
+    } catch (error) {
+      console.error('Error reassigning parking slot:', error);
+    }
+  };
+
+  const removeAllocation = async (slotId: string) => {
+    try {
+      const { error } = await supabase
+        .from('parking_slots')
+        .update({
           status: 'Available',
-          allocatedToFlatId: undefined,
-          assignedDate: undefined,
-        };
-      }
-      return s;
-    }));
+          allocated_to_flat_id: null,
+          assigned_date: null
+        })
+        .eq('id', slotId);
+
+      if (error) throw error;
+      await fetchParkingSlots();
+    } catch (error) {
+      console.error('Error removing parking slot allocation:', error);
+    }
   };
 
   return (
-    <ParkingContext.Provider value={{ parkingSlots, addParkingSlot, updateParkingSlot, assignSlotToFlat, reassignSlot, removeAllocation }}>
+    <ParkingContext.Provider value={{
+      parkingSlots,
+      isLoading,
+      addParkingSlot,
+      updateParkingSlot,
+      assignSlotToFlat,
+      reassignSlot,
+      removeAllocation
+    }}>
       {children}
     </ParkingContext.Provider>
   );

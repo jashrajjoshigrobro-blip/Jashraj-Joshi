@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Eye, Plus } from 'lucide-react';
+import { Search, Filter, Eye, Plus, Loader2 } from 'lucide-react';
 import { useFlats } from '../context/FlatsContext';
 import { useParking } from '../context/ParkingContext';
 import { Flat, OccupancyStatus } from '../types';
@@ -9,7 +9,7 @@ import AddFlatModal from '../components/modals/AddFlatModal';
 
 export default function FlatDirectory() {
   const navigate = useNavigate();
-  const { flats } = useFlats();
+  const { flats, isLoading } = useFlats();
   const { parkingSlots } = useParking();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OccupancyStatus | 'All'>('All');
@@ -37,6 +37,14 @@ export default function FlatDirectory() {
   const calculateOutstanding = (flat: Flat) => {
     return flat.pendingDues.reduce((sum, due) => sum + due.amount, 0);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

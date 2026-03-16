@@ -1,68 +1,125 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Notice, NoticeStatus } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface NoticeContextType {
   notices: Notice[];
-  addNotice: (notice: Omit<Notice, 'id' | 'createdAt' | 'status'> & { status: NoticeStatus }) => void;
-  updateNotice: (id: string, updates: Partial<Notice>) => void;
-  deleteNotice: (id: string) => void;
-  publishNotice: (id: string) => void;
+  isLoading: boolean;
+  addNotice: (notice: Omit<Notice, 'id' | 'createdAt' | 'publishedAt'>) => Promise<void>;
+  updateNotice: (id: string, updates: Partial<Notice>) => Promise<void>;
+  deleteNotice: (id: string) => Promise<void>;
+  publishNotice: (id: string) => Promise<void>;
 }
 
 const NoticeContext = createContext<NoticeContextType | undefined>(undefined);
 
 export function NoticeProvider({ children }: { children: ReactNode }) {
-  const [notices, setNotices] = useState<Notice[]>([
-    {
-      id: 'n1',
-      title: 'Annual General Meeting',
-      description: 'The Annual General Meeting will be held on 15th April at the clubhouse. All owners are requested to attend.',
-      status: 'Published',
-      createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-      publishedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    },
-    {
-      id: 'n2',
-      title: 'Water Supply Maintenance',
-      description: 'Water supply will be unavailable from 10 AM to 2 PM due to pipeline maintenance on 20th April.',
-      status: 'Draft',
-      createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    }
-  ]);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addNotice = (noticeData: Omit<Notice, 'id' | 'createdAt' | 'status'> & { status: NoticeStatus }) => {
-    const newNotice: Notice = {
-      ...noticeData,
-      id: `n${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      publishedAt: noticeData.status === 'Published' ? new Date().toISOString() : undefined,
-    };
-    setNotices(prev => [newNotice, ...prev]);
-  };
+  useEffect(() => {
+    fetchNotices();
+  }, []);
 
-  const updateNotice = (id: string, updates: Partial<Notice>) => {
-    setNotices(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
-  };
+  const fetchNotices = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('notices')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const deleteNotice = (id: string) => {
-    setNotices(prev => prev.filter(n => n.id !== id));
-  };
+      if (error) throw error;
 
-  const publishNotice = (id: string) => {
-    setNotices(prev => prev.map(n => {
-      if (n.id === id) {
-        return {
-          ...n,
-          status: 'Published',
-          publishedAt: new Date().toISOString(),
-        };
+      if (data) {
+        const formattedNotices: Notice[] = data.map((notice: any) => ({
+          id: notice.id,
+          title: notice.title,
+          description: notice.description,
+          status: notice.status as NoticeStatus,
+          createdAt: notice.created_at,
+          publishedAt: notice.published_at,
+        }));
+        setNotices(formattedNotices);
       }
-      return n;
-    }));
+    } catch (error) {
+      console.error('Error fetching notices:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addNotice = async (newNoticeData: Omit<Notice, 'id' | 'createdAt' | 'publishedAt'>) => {
+    try {
+      const { error } = await supabase
+        .from('notices')
+        .insert([{
+          title: newNoticeData.title,
+          description: newNoticeData.description,
+          status: newNoticeData.status,
+          published_at: newNoticeData.status === 'Published' ? new Date().toISOString() : null
+        }]);
+
+      if (error) throw error;
+      await fetchNotices();
+    } catch (error) {
+      console.error('Error adding notice:', error);
+    }
+  };
+
+  const updateNotice = async (id: string, updates: Partial<Notice>) => {
+    try {
+      const dbUpdates: any = {};
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
+      if (updates.publishedAt !== undefined) dbUpdates.published_at = updates.publishedAt;
+
+      const { error } = await supabase
+        .from('notices')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchNotices();
+    } catch (error) {
+      console.error('Error updating notice:', error);
+    }
+  };
+
+  const deleteNotice = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notices')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchNotices();
+    } catch (error) {
+      console.error('Error deleting notice:', error);
+    }
+  };
+
+  const publishNotice = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notices')
+        .update({
+          status: 'Published',
+          published_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchNotices();
+    } catch (error) {
+      console.error('Error publishing notice:', error);
+    }
   };
 
   return (
-    <NoticeContext.Provider value={{ notices, addNotice, updateNotice, deleteNotice, publishNotice }}>
+    <NoticeContext.Provider value={{ notices, isLoading, addNotice, updateNotice, deleteNotice, publishNotice }}>
       {children}
     </NoticeContext.Provider>
   );

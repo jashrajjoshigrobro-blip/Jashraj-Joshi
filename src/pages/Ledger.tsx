@@ -5,13 +5,13 @@ import { useProfile } from '../context/ProfileContext';
 import { TransactionType, TransactionCategory, LedgerTransaction } from '../types';
 import { format, isWithinInterval, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import clsx from 'clsx';
-import { Filter, Calendar, ArrowUpRight, ArrowDownRight, IndianRupee, Wallet, Download } from 'lucide-react';
+import { Filter, Calendar, ArrowUpRight, ArrowDownRight, IndianRupee, Wallet, Download, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 type ViewMode = 'All' | 'Income' | 'Expense';
 
 export default function Ledger() {
-  const { transactions } = useLedger();
+  const { transactions, isLoading } = useLedger();
   const { societySettings } = useProfile();
   const navigate = useNavigate();
 
@@ -162,6 +162,14 @@ export default function Ledger() {
     const safeSocietyName = societySettings.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     XLSX.writeFile(workbook, `${safeSocietyName}_ledger_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-24">

@@ -4,11 +4,9 @@ import { useFlats } from '../context/FlatsContext';
 import { useParking } from '../context/ParkingContext';
 import { useProfile } from '../context/ProfileContext';
 import { Flat, OccupancyStatus, PendingDue, Payment } from '../types';
-import { ArrowLeft, Edit3, Trash2, Repeat, FileText, Download, Plus, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Repeat, FileText, Download, Plus, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 import EditFlatModal from '../components/modals/EditFlatModal';
 import TransferOwnershipModal from '../components/modals/TransferOwnershipModal';
@@ -20,11 +18,13 @@ export default function FlatProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { flats, deleteFlat } = useFlats();
-  const { parkingSlots, removeAllocation } = useParking();
-  const { societySettings } = useProfile();
+  const { flats, deleteFlat, isLoading: isFlatsLoading } = useFlats();
+  const { parkingSlots, removeAllocation, isLoading: isParkingLoading } = useParking();
+  const { societySettings, isLoading: isProfileLoading } = useProfile();
   const flat = flats.find((f) => f.id === id);
   const flatParkingSlots = parkingSlots.filter(s => s.allocatedToFlatId === id);
+
+  const isLoading = isFlatsLoading || isParkingLoading || isProfileLoading;
 
   const [activeTab, setActiveTab] = useState<'received' | 'pending'>('received');
 
@@ -49,6 +49,14 @@ export default function FlatProfile() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [receiptDue, setReceiptDue] = useState<PendingDue | null>(null);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
   if (!flat) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -62,49 +70,59 @@ export default function FlatProfile() {
 
   const outstanding = flat.pendingDues.reduce((sum, due) => sum + due.amount, 0);
 
-  const handleDeleteConfirm = () => {
-    deleteFlat(flat.id);
-    navigate('/flats');
+  const handleDeleteConfirm = async () => {
+    if (flat) {
+      await deleteFlat(flat.id);
+      navigate('/flats');
+    }
   };
 
-  const handleDownloadPDF = (payment: Payment) => {
-    const doc = new jsPDF();
-    const societyName = societySettings.name || "Society Name";
-    const occupantName = flat.occupancyStatus === 'Tenant Occupied' && flat.tenant ? flat.tenant.name : flat.ownerName;
-    const receiptDate = format(new Date(payment.date), 'dd/MM/yyyy');
+  const handleDownloadPDF = async (payment: Payment) => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      
+      const doc = new jsPDF();
+      const societyName = societySettings?.name || "Society Name";
+      const occupantName = flat.occupancyStatus === 'Tenant Occupied' && flat.tenant ? flat.tenant.name : flat.ownerName;
+      const receiptDate = format(new Date(payment.date), 'dd/MM/yyyy');
 
-    // Header
-    doc.setFontSize(20);
-    doc.text(societyName, 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text("Payment Receipt", 105, 30, { align: 'center' });
+      // Header
+      doc.setFontSize(20);
+      doc.text(societyName, 105, 20, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text("Payment Receipt", 105, 30, { align: 'center' });
 
-    doc.setFontSize(10);
-    doc.text(`Receipt No: ${payment.receiptNumber}`, 14, 45);
-    doc.text(`Date: ${receiptDate}`, 150, 45);
-    doc.text(`Flat No: ${flat.flatNumber}`, 14, 52);
+      doc.setFontSize(10);
+      doc.text(`Receipt No: ${payment.receiptNumber}`, 14, 45);
+      doc.text(`Date: ${receiptDate}`, 150, 45);
+      doc.text(`Flat No: ${flat.flatNumber}`, 14, 52);
 
-    // Table
-    autoTable(doc, {
-      startY: 60,
-      head: [['Sr No', 'Title', 'Description', 'Amount']],
-      body: [
-        ['1', payment.title || 'Maintenance Charge', payment.description || 'Monthly maintenance', `Rs. ${payment.amount.toLocaleString()}`]
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
-    });
+      // Table
+      autoTable(doc, {
+        startY: 60,
+        head: [['Sr No', 'Title', 'Description', 'Amount']],
+        body: [
+          ['1', payment.title || 'Maintenance Charge', payment.description || 'Monthly maintenance', `Rs. ${payment.amount.toLocaleString()}`]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+      });
 
-    // Footer
-    const finalY = (doc as any).lastAutoTable.finalY || 60;
-    doc.setFontSize(11);
-    doc.text(`Final Total Amount Paid: Rs. ${payment.amount.toLocaleString()}`, 14, finalY + 15);
-    doc.text(`Received From: ${occupantName}`, 14, finalY + 25);
+      // Footer
+      const finalY = (doc as any).lastAutoTable.finalY || 60;
+      doc.setFontSize(11);
+      doc.text(`Final Total Amount Paid: Rs. ${payment.amount.toLocaleString()}`, 14, finalY + 15);
+      doc.text(`Received From: ${occupantName}`, 14, finalY + 25);
 
-    doc.text("Authorized Signature", 150, finalY + 45);
-    doc.line(140, finalY + 40, 190, finalY + 40);
+      doc.text("Authorized Signature", 150, finalY + 45);
+      doc.line(140, finalY + 40, 190, finalY + 40);
 
-    doc.save(`${payment.receiptNumber}.pdf`);
+      doc.save(`${payment.receiptNumber}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Could not generate PDF.');
+    }
   };
 
   return (

@@ -9,17 +9,19 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, FunnelChart, Funnel, LabelList
 } from 'recharts';
-import { Filter, Calendar, Building2, IndianRupee, TrendingUp, TrendingDown, Users, Car, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Filter, Calendar, Building2, IndianRupee, TrendingUp, TrendingDown, Users, Car, AlertCircle, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 const COLORS = ['#10B981', '#F43F5E', '#F59E0B', '#3B82F6', '#8B5CF6', '#14B8A6', '#F97316'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { flats } = useFlats();
-  const { transactions } = useLedger();
-  const { entries } = useExpense();
-  const { parkingSlots } = useParking();
+  const { flats, isLoading: isFlatsLoading } = useFlats();
+  const { transactions, isLoading: isLedgerLoading } = useLedger();
+  const { entries, isLoading: isExpenseLoading } = useExpense();
+  const { parkingSlots, isLoading: isParkingLoading } = useParking();
+
+  const isLoading = isFlatsLoading || isLedgerLoading || isExpenseLoading || isParkingLoading;
 
   // Global Filters
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -258,6 +260,14 @@ export default function Dashboard() {
   }, [parkingSlots]);
 
   const formatCurrencyValue = (val: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24">
